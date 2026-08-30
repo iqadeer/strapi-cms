@@ -1,0 +1,163 @@
+IMPLEMENTATION PLAN — Solace content model on fresh Strapi 5.52.1
+====================================================================
+Scope: reproduce the reference Solace Strapi schema (10 components +
+9 content types) in this repository. NO permissions, API tokens, CORS,
+upload providers, webhooks, seed data, Docker, or config changes.
+
+Reference repo (already cloned to temp, schemas verified):
+  https://github.com/rigby-sh/solace-medusa-starter-strapi  (Strapi 5.0.4)
+
+--------------------------------------------------------------------
+1. INSPECTION FINDINGS (current project vs reference)
+--------------------------------------------------------------------
+Current project (C:\imran\projects\strapi-cms):
+- Strapi 5.52.1, TypeScript, pnpm, PostgreSQL (db "strapi", 127.0.0.1:5433)
+- No content types, no components, no extensions (src/api empty,
+  src/components absent, src/extensions only .gitkeep)
+- Generated config in place (config/*.ts) — all preserved as-is
+- types/generated/{contentTypes,components}.d.ts exist and are updated
+  by the build
+
+Reference repo:
+- 9 content types under src/api/<name>/content-types/<name>/schema.json
+- 10 components under src/components/<category>/<kebab-name>.json
+- ALL controllers/services/routes are default Strapi 5 factory stubs
+  (factories.createCoreController/Service/Router) — no custom logic
+- No extensions, no custom middlewares needed for the schema itself
+
+--------------------------------------------------------------------
+2. DIFFERENCES / ADAPTATIONS vs Strapi 5.52.1
+--------------------------------------------------------------------
+- Schema JSON format is identical between 5.0.4 and 5.52.1. The schema
+  files can be copied 1:1 with NO content changes:
+  * PascalCase attribute names (Title, HeroBanner, Banner, FAQSection,
+    PageContent, ...) must be preserved exactly — the storefront
+    (src/types/strapi.ts) depends on this exact casing.
+  * collectionName values preserved verbatim (e.g. "components_about_us_whyuses"
+    with the reference typo) — do NOT "fix" them.
+  * info/options/pluginOptions/draftAndPublish preserved verbatim.
+- File layout note: the task text suggests
+  src/components/<category>/<component>/schema.json, but the ACTUAL
+  Strapi 5 (and reference) convention for components is a single flat
+  file: src/components/<category>/<kebab-name>.json. We follow the
+  real Strapi 5.52.1 convention (same as reference).
+  Content-type layout src/api/<name>/content-types/<name>/schema.json
+  matches the task text and Strapi 5.52.1.
+- Controllers/services/routes: NOT created by us. Strapi 5 generates
+  the standard factory stubs automatically (develop/server bootstrap);
+  if the build/server ever requires them, we add only the stock 3-line
+  factory stub files (identical to Strapi's own scaffolding) — never
+  custom logic.
+- blog.Categories relation: declared oneToMany -> api::blog-post-category
+  exactly as in the reference; Strapi auto-creates the inverse
+  manyToMany ("posts") on the category side. Copied verbatim.
+- No new npm dependencies required. No changes to package.json,
+  config/*, .env, database config, or .gitignore.
+
+UNCERTAIN (resolved at build/dev time, low risk):
+- Whether `strapi build` accepts schema-only API folders without
+  boilerplate files. Fallback: add the stock factory stubs.
+
+--------------------------------------------------------------------
+3. FILES TO CREATE
+--------------------------------------------------------------------
+Components (10) — copy from reference src/components, verbatim:
+  src/components/homepage/hero-banner.json
+  src/components/homepage/cta.json
+  src/components/about-us/content-section.json
+  src/components/about-us/why-us.json
+  src/components/about-us/tile.json
+  src/components/about-us/numerical-content.json
+  src/components/faq/faq.json
+  src/components/faq/faq-question.json
+  src/components/color-hex/color-hex.json
+  src/components/color-image/color-image.json
+
+Content types (9) — copy from reference src/api, verbatim:
+  src/api/homepage/content-types/homepage/schema.json            (singleType,  dnp: false)
+  src/api/collection/content-types/collection/schema.json        (collection,  dnp: true)
+  src/api/blog/content-types/blog/schema.json                    (collection,  dnp: true)
+  src/api/blog-post-category/content-types/blog-post-category/schema.json (collection, dnp: true)
+  src/api/about-us/content-types/about-us/schema.json            (singleType,  dnp: true)
+  src/api/faq/content-types/faq/schema.json                      (singleType,  dnp: true)
+  src/api/privacy-policy/content-types/privacy-policy/schema.json (singleType, dnp: true)
+  src/api/terms-and-condition/content-types/terms-and-condition/schema.json (singleType, dnp: true)
+  src/api/product-variant-color/content-types/product-variant-color/schema.json (collection, dnp: false)
+   - dynamiczone "Type": [color-image.color-image, color-hex.color-hex]
+
+Files expected to be MODIFIED/GENERATED by the build (relevant, ok):
+  types/generated/contentTypes.d.ts
+  types/generated/components.d.ts
+(dist/* is build output — verify it stays out of git via .gitignore)
+
+Explicitly NOT touched: config/*.ts, src/index.ts, .env*,
+package.json, pnpm-lock.yaml, database/, public/, favicon, README.
+
+--------------------------------------------------------------------
+4. STEP-BY-STEP
+--------------------------------------------------------------------
+Stage 1 — Create schema files
+  1. Create src/components files (10) by copying the reference schema
+     JSON verbatim.
+  2. Create src/api content-type folder trees + schema.json (9) by
+     copying the reference schema JSON verbatim.
+  3. Sanity check each file against the reference for: kind,
+     collectionName, info, options.draftAndPublish, and every
+     attribute (name, type, required, unique, repeatable, targetField,
+     allowedTypes, components[], relation).
+
+Stage 2 — Build
+  4. Run: pnpm build
+  5. Fix ONLY errors caused by these schema files (e.g. add stock
+     factory stubs if required). Do not touch unrelated warnings.
+  6. Confirm types/generated/*.d.ts now include the 9 content types
+     and 10 components.
+
+Stage 3 — Runtime verification
+  7. Start dev server: pnpm dev  (port 1337; auto-migration creates the
+     new tables in the "strapi" database — the only DB change)
+  8. Log into Content Manager and verify all 9 content types exist with
+     correct fields, the blog<->blog-post-category relation, the
+     product-variant-color dynamic zone, and that all 10 components
+     are available in the attribute picker.
+  9. Stop the dev server when verified.
+
+Stage 4 — Hygiene
+  10. git status / git diff: confirm only the 19 new schema files plus
+      regenerated types/generated files (and, if auto-generated, the
+      stock factory stubs) are changed. node_modules/dist must not
+      appear.
+  11. Commit nothing (unless asked).
+
+--------------------------------------------------------------------
+5. VERIFICATION CHECKLIST
+--------------------------------------------------------------------
+[ ] pnpm build exits 0 (TS + Strapi compile)
+[ ] Content Manager shows: homepage, collection, blog,
+    blog-post-category, about-us, faq, privacy-policy,
+    terms-and-condition, product-variant-color
+[ ] blog.Categories relation + inverse posts relation present
+[ ] product-variant-color.Type dynamic zone lists color-image + color-hex
+[ ] homepage/about-us/faq/privacy-policy/terms render as single types;
+    homepage + product-variant-color are NOT draft&publish
+[ ] 10 components usable in admin (hero-banner, cta, content-section,
+    why-us, tile, numerical-content, faq, faq-question, color-hex,
+    color-image)
+[ ] types/generated/*.d.ts updated with new UIDs/attributes
+[ ] git diff contains only schema files + generated types
+[ ] No permissions/tokens/CORS/webhook/media/Docker/seed work done
+[ ] No config files changed, no deps installed
+
+--------------------------------------------------------------------
+6. OUT OF SCOPE (explicit confirmation)
+--------------------------------------------------------------------
+- No API permissions or API token configuration
+- No CORS or middleware changes (config/middlewares.ts untouched)
+- No upload/storage provider configuration
+- No webhooks or revalidation setup
+- No seed content
+- No Docker files
+- No changes to config/server.ts, config/plugins.ts, config/admin.ts,
+  config/api.ts, config/database.ts
+- No custom controllers/services/routes/policies/lifecycle hooks
+- No new dependencies
