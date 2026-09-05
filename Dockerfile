@@ -31,6 +31,7 @@ COPY --from=build /opt/strapi/config ./config
 COPY --from=build /opt/strapi/src ./src
 COPY --from=build /opt/strapi/database ./database
 COPY --from=build /opt/strapi/public ./public
+COPY --from=build /opt/strapi/tsconfig.json ./
 COPY --from=build /opt/strapi/favicon.png ./
 
 RUN chown -R node:node /opt/strapi

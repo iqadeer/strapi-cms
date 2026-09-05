@@ -11,8 +11,8 @@ services:
       # existing PostgreSQL server (no bootstrap here).
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
-      DATABASE_NAME: strapi_cms
-      DATABASE_USERNAME: strapi_cms_user
+      DATABASE_NAME: strapi
+      DATABASE_USERNAME: medusa_user
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD must be set in .env}
     ports:
       - "1337:1337"
