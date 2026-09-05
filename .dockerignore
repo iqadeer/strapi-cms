@@ -1,0 +1,23 @@
+# Note: public/uploads is intentionally NOT listed here. Existing files must
+# stay in the image so Docker seed-copies them into the empty named volume
+# on first mount.
+
+.git
+Dockerfile
+docker-compose.yml
+.dockerignore
+plan.txt
+node_modules
+dist
+build
+.tmp
+.strapi
+.strapi-updater.json
+.strapi-cloud.json
+.env
+.env.example
+*.log
+logs
+coverage
+.tsbuildinfo
+.idea

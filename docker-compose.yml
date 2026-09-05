@@ -1,0 +1,35 @@
+services:
+  strapi:
+    build: .
+    image: strapi-cms
+    container_name: strapi-cms
+    env_file:
+      - .env
+    environment:
+      # Override the local-dev database values from .env for the Docker
+      # environment. Database and user are provisioned externally in the
+      # existing PostgreSQL server (no bootstrap here).
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: strapi_cms
+      DATABASE_USERNAME: strapi_cms_user
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD must be set in .env}
+    ports:
+      - "1337:1337"
+    volumes:
+      # Empty named volume on first mount: Docker copies the image's
+      # public/uploads into it, preserving existing repository uploads.
+      - strapi_uploads:/opt/strapi/public/uploads
+    networks:
+      - postgres-net
+      - store-platform-net
+    restart: unless-stopped
+
+volumes:
+  strapi_uploads:
+
+networks:
+  postgres-net:
+    external: true
+  store-platform-net:
+    external: true
